@@ -1,0 +1,13 @@
+mode: grpo
+reward_mode: multi
+weights: {answer: 0.55, evidence: 0.15, format: 0.10, efficiency: 0.10, strategy: 0.10}
+group:
+  success_weight: 1.5
+  failure_weight: 0.6
+  zscore_epsilon: 1.0e-6
+  clip_sigma: 5.0
+  fifo_mix_ratio: 0.10
+training:
+  n_samples_per_prompt: 5
+  max_turns: 4
+

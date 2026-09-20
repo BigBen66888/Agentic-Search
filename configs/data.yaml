@@ -1,0 +1,15 @@
+sources: [nq, triviaqa, popqa, hotpotqa, 2wikimultihopqa, musique, bamboogle]
+dataset_name: RUC-NLPIR/FlashRAG_datasets
+filter_target_rate: 0.05
+rewrite:
+  enabled: false
+  model_name: null
+  max_variants: 2
+  batch_size: 8
+difficulty:
+  easy_max: 1
+  medium_max: 3
+sampling:
+  max_total_multiplier: 2.5
+  source_balance: true
+

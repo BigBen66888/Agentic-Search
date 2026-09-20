@@ -1,0 +1,14 @@
+corpus_path: corpus/wiki-18.jsonl
+bm25_index_path: indices/bm25.pkl
+dense_index_path: indices/e5_flat.faiss
+doc_manifest_path: indices/doc_manifest.jsonl
+retrieval_model: intfloat/e5-base-v2
+topk: 10
+bm25_topk: 20
+dense_topk: 20
+rrf_k: 60.0
+batch_size: 64
+max_length: 256
+faiss_gpu: false
+port: 8000
+

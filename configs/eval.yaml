@@ -1,0 +1,6 @@
+split: test
+max_samples: null
+smoke_per_source: 20
+proxy_per_source: 200
+timeout_seconds: 60
+
