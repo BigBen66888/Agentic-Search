@@ -1,7 +1,7 @@
-# CUDA 12.1 wheel
-# 服务器需要安装 NVIDIA 驱动，并且驱动版本要能支持 CUDA 12.1 runtime
+# CUDA 12.1 / Tesla V100 (SM 7.0)
 --extra-index-url https://download.pytorch.org/whl/cu121
-torch==2.4.1
-torchvision==0.19.1
-torchaudio==2.4.1
-
+torch==2.5.1
+torchvision==0.20.1
+torchaudio==2.5.1
+numpy==1.26.4
+xformers==0.0.28.post3

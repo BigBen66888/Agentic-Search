@@ -2,6 +2,20 @@ import argparse
 import json
 import os
 
+def bm25_tokenize(text):
+    """Stable whitespace + CJK unigram/bigram tokenizer for BM25."""
+    import re
+    tokens = []
+    for part in re.findall(r"\S+", str(text).lower()):
+        if re.search(r"[\u3400-\u9fff]", part):
+            chars = re.findall(r"[\u3400-\u9fff]", part)
+            tokens.extend(chars)
+            tokens.extend(a + b for a, b in zip(chars, chars[1:]))
+            tokens.extend(x for x in re.split(r"[^\w]+", part) if x and not re.search(r"[\u3400-\u9fff]", x))
+        else:
+            tokens.append(part)
+    return tokens
+
 def read_jsonl(path):
     with open(path, encoding="utf-8") as f:
         return [json.loads(x) for x in f if x.strip()]

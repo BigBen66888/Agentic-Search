@@ -50,7 +50,8 @@ class HybridRetriever:
         return [dict(self.docs[int(i)], dense_score=float(s)) for s, i in zip(scores[0], ids[0]) if int(i) >= 0]
 
     def _bm25_search(self, query, topk):
-        scores = self.bm25.get_scores(query.lower().split())
+        from .build_index import bm25_tokenize
+        scores = self.bm25.get_scores(bm25_tokenize(query))
         ids = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:topk]
         return [dict(self.docs[i], bm25_score=float(scores[i])) for i in ids]
 
@@ -94,4 +95,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

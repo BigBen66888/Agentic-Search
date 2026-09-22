@@ -12,7 +12,9 @@
 
 ### 1. Reward Manager
 
-在参考 Search-R1 的 verl/trainer/main_ppo_format.py 中，原来选择 qa_em_format.compute_score_em 的位置，改为：
+本项目不依赖不存在的 `verl.trainer.main_ppo_format`，而是使用 upstream
+的 `verl.trainer.main_ppo` 官方 `custom_reward_function` 接口。原来参考
+Search-R1 中选择 `qa_em_format.compute_score_em` 的位置，改为：
 
     from search_r1_refine.rl.verl_adapter import SearchRewardAdapter
 
@@ -61,7 +63,7 @@ veRL 原有的 GRPO group 归一化可以先保留，完成 smoke 后再接入�
 
     nvidia-smi
     python -c "import torch; print(torch.cuda.device_count()); print(torch.cuda.get_device_name(0))"
-    ray status
+    python -c "import ray; print(ray.__version__)"
 
 单机 8 卡推荐参数：
 
@@ -87,7 +89,7 @@ veRL 原有的 GRPO group 归一化可以先保留，完成 smoke 后再接入�
 
     python scripts/train_grpo.py \
       --data-dir /data/search_r1 \
-      --model Qwen/Qwen2.5-3B \
+      --model /data/search_r1/models/Qwen2.5-3B \
       --reward-mode multi \
       --n-gpus 8 \
       --nnodes 1 \
@@ -97,13 +99,15 @@ veRL 原有的 GRPO group 归一化可以先保留，完成 smoke 后再接入�
 
     python scripts/train_grpo.py \
       --data-dir /data/search_r1 \
-      --model Qwen/Qwen2.5-3B \
+      --model /data/search_r1/models/Qwen2.5-3B \
       --reward-mode multi \
       --n-gpus 8 \
       --nnodes 1 \
       --execute
 
-脚本会在每个阶段打印 GPU、torch、Ray 环境检查，数据/索引文件检查，veRL 启动参数，日志目录和训练进程退出码。
+脚本会在每个阶段打印 GPU、torch、Ray 环境检查，数据/索引文件检查，veRL 启动参数，日志目录和训练进程退出码；
+同时自动指向 `scripts/verl_custom_reward.py`，并覆盖 V100 兼容参数
+`dtype=float16`、`enable_prefix_caching=false`、`enable_chunked_prefill=false`。
 
 B1 与 B2 分别执行一次，不要把两个 reward mode 混在同一个 run 中。
 
@@ -127,4 +131,3 @@ veRL、Ray、vLLM 和 CUDA 版本强绑定，直接复制会让 GitHub 仓库变
 4. B1 用 5%–10% 数据短跑，reward 能正常落在 response 末 token；
 5. B2 短跑无 NaN，记录 reward breakdown、KL、advantage mean/std/max；
 6. 最终 B0/B1/B2 使用同一 RRF、同一 test/dev 和同一评测脚本。
-

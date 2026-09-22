@@ -50,13 +50,18 @@ def main():
     train = f"{args.data_dir}/processed/train.parquet"
     val = f"{args.data_dir}/processed/eval.parquet"
     os.makedirs(args.log_dir, exist_ok=True)
-    command = ["python", "-m", "verl.trainer.main_ppo_format",
+    custom_reward = os.path.abspath(os.path.join(os.path.dirname(__file__), "verl_custom_reward.py"))
+    command = [sys.executable, "-m", "verl.trainer.main_ppo",
         f"data.train_files={train}", f"data.val_files={val}",
         "algorithm.adv_estimator=grpo", f"actor_rollout_ref.model.path={args.model}",
         "actor_rollout_ref.rollout.n_agent=5", "max_turns=4",
         f"retriever.url={args.retriever_url}", f"+reward_model.mode={args.reward_mode}",
         f"trainer.n_gpus_per_node={args.n_gpus}", f"trainer.nnodes={args.nnodes}",
         "actor_rollout_ref.actor.use_kl_loss=true", "actor_rollout_ref.actor.state_masking=true",
+        "actor_rollout_ref.rollout.dtype=float16",
+        "actor_rollout_ref.rollout.enable_prefix_caching=false",
+        "actor_rollout_ref.rollout.enable_chunked_prefill=false",
+        f"custom_reward_function.path={custom_reward}", "custom_reward_function.name=compute_score",
         "trainer.logger=['wandb']", f"trainer.default_local_dir={args.log_dir}/{args.reward_mode}"]
     if args.max_steps is not None:
         command.append(f"trainer.total_training_steps={args.max_steps}")
@@ -70,6 +75,8 @@ def main():
         env = os.environ.copy()
         env.setdefault("TOKENIZERS_PARALLELISM", "true")
         env.setdefault("NCCL_DEBUG", "WARN")
+        env.setdefault("VERL_ATTN_IMPL", "sdpa")
+        env.setdefault("VERL_VLLM_PREFIX_CACHING", "0")
         result = subprocess.run(command, check=False, env=env)
         log(f"阶段 4/4：veRL 进程退出码={result.returncode}")
         if result.returncode != 0:

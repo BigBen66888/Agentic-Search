@@ -2,7 +2,7 @@
 import argparse
 import pickle
 from pathlib import Path
-from search_r1_refine.retrieval.build_index import build_dense, read_jsonl
+from search_r1_refine.retrieval.build_index import build_dense, read_jsonl, bm25_tokenize
 
 def main():
     p = argparse.ArgumentParser()
@@ -18,7 +18,7 @@ def main():
     try:
         from rank_bm25 import BM25Okapi
         docs = read_jsonl(args.corpus)
-        tokenized = [str(x.get("text", x.get("contents", ""))).lower().split() for x in docs]
+        tokenized = [bm25_tokenize(x.get("text", x.get("contents", ""))) for x in docs]
         with open(index_dir / "bm25.pkl", "wb") as f:
             pickle.dump(BM25Okapi(tokenized), f)
         print("BM25 index written:", index_dir / "bm25.pkl")
@@ -27,4 +27,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

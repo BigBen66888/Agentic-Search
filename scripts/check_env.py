@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import importlib.util
 import os
-import subprocess
 import sys
 
 def check(name):
@@ -21,6 +20,13 @@ if check("torch"):
     for i in range(torch.cuda.device_count()):
         print(f"[Search-R1] gpu[{i}]={torch.cuda.get_device_name(i)}", flush=True)
 if importlib.util.find_spec("ray"):
-    subprocess.run(["ray", "status"], check=False)
+    try:
+        import ray
+        print(f"[Search-R1] ray_version={ray.__version__}", flush=True)
+        if ray.is_initialized():
+            print(f"[Search-R1] ray_resources={ray.cluster_resources()}", flush=True)
+        else:
+            print("[Search-R1] ray_api=available (not initialized)", flush=True)
+    except Exception as exc:
+        print(f"[Search-R1] ray_api_check_failed={exc}", flush=True)
 print("[Search-R1] 环境检查结束", flush=True)
-

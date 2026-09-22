@@ -17,6 +17,7 @@ p.add_argument("--easy-max", type=int, default=1)
 p.add_argument("--medium-max", type=int, default=3)
 args = p.parse_args()
 args.output_dir = os.path.join(args.data_dir, "processed")
+args.data_dir = args.data_dir
 print(f"[Search-R1] 数据处理开始：sources={args.sources}", flush=True)
 print("[Search-R1] 阶段：质量过滤 -> 查询改写（可选） -> 难度分层 -> JSONL/Parquet", flush=True)
 started = time.time()

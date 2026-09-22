@@ -1,7 +1,7 @@
 import json
 import time
 import requests
-from .metrics import summarize
+from .metrics import summarize, _prompt_of
 from search_r1_refine.data.schema import read_jsonl
 
 def call_agent(url, prompt, timeout):
@@ -17,9 +17,7 @@ def online_eval(eval_path, agent_url, retriever_url, output_path, max_samples=No
     traces = []
     for row in rows:
         started = time.perf_counter()
-        prompt = row.get("prompt_text") or row.get("prompt")
-        if isinstance(prompt, list):
-            prompt = prompt[-1].get("content", "") if prompt else ""
+        prompt = _prompt_of(row)
         text = call_agent(agent_url, prompt, timeout)
         traces.append({**row, "text": text, "search_count": text.lower().count("<search>"),
                        "latency_ms": (time.perf_counter() - started) * 1000,
