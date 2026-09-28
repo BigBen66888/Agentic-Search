@@ -1,0 +1,24 @@
+# SFT 冷启动：强模型采样 2k 高分轨迹
+teacher_model: deepseek-4.1-flash
+api_base: null        # 留空则读 LLM_API_BASE
+api_key: null         # 留空则读 LLM_API_KEY
+target: 2000
+max_attempts: 6000
+max_turns: 4
+topk: 5
+max_chars: 1200
+temperature: 0.3
+min_reward: 0.8
+min_answer_f1: 0.9
+workers: 8
+
+# SFT 训练（4x4090），基模 Qwen2.5-3B base
+base_model: Qwen/Qwen2.5-3B
+epochs: 3
+batch_size: 2
+grad_accum: 8
+lr: 1.0e-5
+max_length: 3072
+warmup_ratio: 0.03
+bf16: true
+gradient_checkpointing: true

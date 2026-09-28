@@ -15,6 +15,15 @@ artifacts/
 *.jsonl.gz
 *.index
 *.faiss
+*.npy
 *.pkl
+corpus/
+indices/
+models/
+qa/
 *.bin
 *.safetensors
+.workbuddy-ai/
+*.html
+*.tmp
+*.bak

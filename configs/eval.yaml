@@ -1,6 +1,23 @@
-split: test
+# 评测：nq 官方 test + hotpotqa 官方 dev，六组对比
+rank_k: 10
+metrics: [em, answer_f1, judge, recall@10, mrr@10, ndcg@10, evidence, format, efficiency]
+judge_enabled: false
+judge_model: null
+timeout_seconds: 180
 max_samples: null
-smoke_per_source: 20
-proxy_per_source: 200
-timeout_seconds: 60
 
+baseline: base
+variants:
+  base:               {model: Qwen/Qwen2.5-3B,                 retriever: both}
+  sft:                {model: models/sft,                      retriever: both}
+  grpo_binary:        {model: models/grpo_binary,              retriever: both}
+  grpo_multi:         {model: models/grpo_multi,               retriever: both}
+  compare:            {model: Qwen/Qwen3.5-4B,                 retriever: both}
+  grpo_multi_single:  {model: models/grpo_multi,               retriever: dense}
+
+# 六组实验回答的问题：
+# 1 base vs sft                      -> SFT 冷启动带来多少提升
+# 2 base vs grpo_binary              -> GRPO + 0/1 奖励 + 双路
+# 3 base vs grpo_multi               -> GRPO + 多级奖励 + 双路
+# 4 base vs compare                  -> 与参考模型（qwen3.5-4b）的差距
+# 5 grpo_multi vs grpo_multi_single  -> 双路 vs 单路召回

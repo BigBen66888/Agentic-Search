@@ -1,14 +1,33 @@
+# 语料：2100 万条 Wikipedia 段落（wiki-18）
 corpus_path: corpus/wiki-18.jsonl
-bm25_index_path: indices/bm25.pkl
-dense_index_path: indices/e5_flat.faiss
+offsets_path: indices/doc_offsets.npy
+dense_index_path: indices/e5_ivfpq.faiss
+bm25_index_path: indices/bm25
 doc_manifest_path: indices/doc_manifest.jsonl
-retrieval_model: intfloat/e5-base-v2
-topk: 10
-bm25_topk: 20
-dense_topk: 20
-rrf_k: 60.0
-batch_size: 64
-max_length: 256
-faiss_gpu: false
-port: 8000
 
+# 稠密检索：e5 向量 + FAISS IVF-PQ（压缩，GPU 训练/检索）
+retrieval_model: intfloat/e5-base-v2
+index_factory: IVF32768,PQ96x8
+nlist: 32768
+pq_m: 96
+pq_nbits: 8
+train_size: 1500000
+nprobe: 64
+encode_batch_size: 256
+add_batch: 200000
+max_length: 256
+faiss_gpu: true
+gpu_id: 0
+
+# 稀疏检索：交给第三方库，不在本仓库实现 BM25
+bm25_backend: bm25s
+bm25_k1: 1.5
+bm25_b: 0.75
+
+# 二路 RRF 融合与服务
+rrf_k: 60.0
+topk: 10
+dense_topk: 100
+bm25_topk: 100
+service_host: 0.0.0.0
+port: 8000

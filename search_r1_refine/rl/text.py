@@ -13,4 +13,3 @@ def f1_score(pred, gold):
         return 0.0
     precision, recall = common / len(p), common / len(g)
     return 2 * precision * recall / (precision + recall)
-

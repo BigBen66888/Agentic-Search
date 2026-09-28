@@ -1,133 +1,73 @@
-# veRL + 多卡训练接入说明
+# veRL 接入说明（4×4090）
 
-本仓库的训练主框架是 veRL，不是自写 PPO/GRPO Trainer。search_r1_refine 只保存数据、检索、奖励和优势估计的改造模块；参考项目中的 veRL、Ray、vLLM 训练框架需要在 Kaggle 或公司服务器单独安装。
+本仓库不复制 veRL/Search-R1 训练框架。训练入口同时使用 Search-R1 的 `retriever.url`、`rollout.n_agent` 与 veRL 的 `custom_reward_function`。仓库没有提供已固定版本的同时支持这三个接口的 fork；相邻旧版 Search-R1 副本没有 `custom_reward_function`。因此安装普通 `verl` 或未经适配的 Search-R1 均不能直接证明二值/多级奖励生效。完整 GPU 训练须先验证接口兼容性和奖励输出，并记录实际 fork commit。
 
-本项目的正式训练路径是：
-
-- B1：veRL + GRPO + 原始 0/1 EM reward；
-- B2：veRL + GRPO + 多级 reward + group 归一化/离群裁剪；
-- PPO 不作为正式训练方案，不启动 critic 模型。
-
-## 一、veRL 中需要接入的两个位置
+## 一、接入点
 
 ### 1. Reward Manager
 
-本项目不依赖不存在的 `verl.trainer.main_ppo_format`，而是使用 upstream
-的 `verl.trainer.main_ppo` 官方 `custom_reward_function` 接口。原来参考
-Search-R1 中选择 `qa_em_format.compute_score_em` 的位置，改为：
+使用 upstream 的 `verl.trainer.main_ppo` + `custom_reward_function` 接口：
 
-    from search_r1_refine.rl.verl_adapter import SearchRewardAdapter
+    custom_reward_function.path=<repo>/scripts/verl_custom_reward.py
+    custom_reward_function.name=compute_score
 
-    adapter = SearchRewardAdapter(
-        tokenizer=tokenizer,
-        mode=config.reward_model.mode,       # binary 或 multi
-        max_turns=config.max_turns,
-    )
+`compute_score` 内部委托给 `search_r1_refine.rl.verl_adapter.SearchRewardAdapter`。
+奖励模式由环境变量 `SEARCH_REWARD_MODE` 决定，该变量由 `scripts/train_grpo.py`
+按 `--reward-mode` 注入：
 
-在 RewardManager.__call__ 解码出 sequences_str 和 ground_truth 后：
+- `binary`：B1，答案 EM 的 0/1 奖励
+- `multi`：B2，五级加权奖励
 
-    score = adapter(sequences_str, ground_truth)
-    reward_tensor[i, valid_response_length - 1] = score
+`ground_truth` 需包含：
 
-B1 使用 reward_model.mode=binary；B2 使用 reward_model.mode=multi。
+    {"target": ["gold answer"], "supporting_facts": [...]}
 
-ground_truth 需要包含：
+### 2. GRPO 优势估计
 
-    {
-      "target": ["gold answer"],
-      "supporting_facts": [...]
-    }
+以下增强优势估计器是本仓库提供的适配器。当前 `train_grpo.py` 没有把它接入外部 veRL 的 `compute_advantage`；若使用它，须在训练框架中显式调用并记录补丁：
 
-### 2. GRPO Advantage
+```python
+from search_r1_refine.rl.verl_advantage_adapter import compute_search_grpo_advantage
 
-veRL 原有的 GRPO group 归一化可以先保留，完成 smoke 后再接入增强版本：
+advantages = compute_search_grpo_advantage(
+    rewards=sequence_rewards,
+    group_ids=prompt_group_ids,
+    config={"success_weight": 1.5, "failure_weight": 0.6,
+            "zscore_epsilon": 1e-6, "clip_sigma": 5.0},
+)
+```
 
-    from search_r1_refine.rl.verl_advantage_adapter import compute_search_grpo_advantage
+未接入此适配器时，训练框架使用自身的 GRPO 优势估计；不得将轨迹加权与 ±5σ 裁剪描述为该次训练已经生效。
 
-    advantages = compute_search_grpo_advantage(
-        rewards=sequence_rewards,
-        group_ids=prompt_group_ids,
-        config={
-            "success_weight": 1.5,
-            "failure_weight": 0.6,
-            "zscore_epsilon": 1e-6,
-            "clip_sigma": 5.0,
-        },
-    )
+## 二、4×4090 参数
 
-然后按 veRL 原有逻辑将 outcome advantage 扩展到 response token mask。请保留配置开关，异常时回退到原始 veRL GRPO。
+`scripts/train_grpo.py` 生成的命令已包含：
 
-## 二、多卡运行原则
-
-训练由 Ray/veRL 负责多卡调度，不要用单卡 Python 进程假装多卡。启动前确认：
-
-    nvidia-smi
-    python -c "import torch; print(torch.cuda.device_count()); print(torch.cuda.get_device_name(0))"
-    python -c "import ray; print(ray.__version__)"
-
-单机 8 卡推荐参数：
-
-    trainer.n_gpus_per_node=8
+    trainer.n_gpus_per_node=4
     trainer.nnodes=1
-    actor_rollout_ref.rollout.n_agent=5
-    actor_rollout_ref.rollout.tensor_model_parallel_size=1
+    actor_rollout_ref.actor.use_kl_loss=true
+    actor_rollout_ref.actor.state_masking=true
     actor_rollout_ref.model.enable_gradient_checkpointing=true
     actor_rollout_ref.actor.fsdp_config.param_offload=true
-    actor_rollout_ref.actor.fsdp_config.grad_offload=true
     actor_rollout_ref.actor.fsdp_config.optimizer_offload=true
 
-多机时：
+采样数默认用 Search-R1 fork 的 `actor_rollout_ref.rollout.n_agent`；
+若使用 upstream veRL，加 `--upstream-verl` 改用 `actor_rollout_ref.rollout.n`。
 
-    trainer.n_gpus_per_node=<每台机器 GPU 数>
-    trainer.nnodes=<机器数>
+## 三、执行顺序
 
-多机运行前必须让所有机器看到相同的数据目录、模型目录、代码 commit 和 Python 环境；Ray head/worker、NCCL、SSH 和防火墙属于服务器部署问题，先用单机多卡跑通。
+```bash
+python scripts/train_grpo.py --data-dir /data/search_r1 --n-gpus 4 --reward-mode multi --dry-run
+python scripts/train_grpo.py --data-dir /data/search_r1 --n-gpus 4 --reward-mode multi --execute
+```
 
-## 三、训练入口
+B1 与 B2 各跑一次，不要混在同一个 run 里。首次先 `--max-steps 50` 短跑。
 
-生成命令但不执行：
+## 四、最低验收
 
-    python scripts/train_grpo.py \
-      --data-dir /data/search_r1 \
-      --model /data/search_r1/models/Qwen2.5-3B \
-      --reward-mode multi \
-      --n-gpus 8 \
-      --nnodes 1 \
-      --dry-run
-
-确认命令后执行：
-
-    python scripts/train_grpo.py \
-      --data-dir /data/search_r1 \
-      --model /data/search_r1/models/Qwen2.5-3B \
-      --reward-mode multi \
-      --n-gpus 8 \
-      --nnodes 1 \
-      --execute
-
-脚本会在每个阶段打印 GPU、torch、Ray 环境检查，数据/索引文件检查，veRL 启动参数，日志目录和训练进程退出码；
-同时自动指向 `scripts/verl_custom_reward.py`，并覆盖 V100 兼容参数
-`dtype=float16`、`enable_prefix_caching=false`、`enable_chunked_prefill=false`。
-
-B1 与 B2 分别执行一次，不要把两个 reward mode 混在同一个 run 中。
-
-## 四、为什么不把 veRL 整个复制到本仓库
-
-veRL、Ray、vLLM 和 CUDA 版本强绑定，直接复制会让 GitHub 仓库变得巨大且难以复现。本仓库只保留以下改造接口：
-
-- search_r1_refine/rl/verl_adapter.py
-- search_r1_refine/rl/verl_advantage_adapter.py
-- 本文档中的 upstream 接入点
-
-上传 GitHub 后，在服务器上 clone 本仓库和参考 Search-R1，再应用这两个适配器即可。
-
-## 五、最小验收
-
-在正式训练前必须完成：
-
-1. 单机多卡 torch.cuda.device_count() 正确；
-2. 检索服务 /health 返回 ok；
-3. train.parquet 和 eval.parquet 存在；
-4. B1 用 5%–10% 数据短跑，reward 能正常落在 response 末 token；
-5. B2 短跑无 NaN，记录 reward breakdown、KL、advantage mean/std/max；
-6. 最终 B0/B1/B2 使用同一 RRF、同一 test/dev 和同一评测脚本。
+1. `torch.cuda.device_count()` 为 4，型号为 4090
+2. 检索机 `/health` 返回 `ok`，`ways` 包含 `dense` 与 `bm25`
+3. `processed/train_pool.parquet` 与 `processed/eval.parquet` 存在
+4. B1 短跑：奖励能落到 response 末 token
+5. B2 短跑：无 NaN，记录 reward breakdown、KL、advantage 均值/标准差/最大值
+6. 最终四个变体用同一 RRF、同一 test、同一评测脚本

@@ -1,5 +1,9 @@
+# 检索：21M Wikipedia + FAISS-GPU + BM25（全部使用第三方库，不自己实现）
 faiss-gpu-cu12==1.12.0; platform_system == "Linux"
+faiss-cpu==1.12.0; platform_system != "Linux"
+bm25s==0.2.6
 rank-bm25==0.2.2
+PyStemmer==2.2.0.3
 transformers==4.48.3
 tokenizers==0.21.0
 accelerate==1.2.1

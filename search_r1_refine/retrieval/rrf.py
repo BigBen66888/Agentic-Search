@@ -17,4 +17,3 @@ def reciprocal_rank_fusion(ranked_lists: Sequence[Sequence[Dict]], *, k: float =
         item["rrf_score"] = scores[doc_id]
         output.append(item)
     return output
-

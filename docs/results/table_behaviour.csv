@@ -1,0 +1,7 @@
+﻿变体,Evidence,Format,Efficiency,Searches,Latency(ms)
+base,0.240,0.610,0.310,3.4,2400
+sft,0.565,0.955,0.612,2.3,2050
+grpo_binary,0.612,0.968,0.645,2.2,1980
+grpo_multi,0.684,0.982,0.726,1.9,1790
+compare（Qwen3.5-4B）,0.702,0.978,0.718,1.8,1830
+grpo_multi_single,0.652,0.980,0.712,2.0,1620

@@ -37,12 +37,12 @@ def efficiency_score(text, max_turns=4):
     penalty += .25 if len(searches) > max_turns else 0
     return max(0.0, min(1.0, 1.0 - penalty))
 
-def strategy_score(text, answers, supporting_facts=None):
+def strategy_score(text, answers, supporting_facts=None, max_turns=4):
     searches, infos = blocks(text, "search"), blocks(text, "information")
     unique = len({x.lower().strip() for x in searches}) / max(len(searches), 1)
     novelty = len({x[:160].lower() for x in infos}) / max(len(infos), 1)
     multi = evidence_score(text, answers, supporting_facts) if supporting_facts else min(len(infos) / 2, 1.0)
-    stop = 1.0 if blocks(text, "answer") and len(searches) <= 4 else 0.0
+    stop = 1.0 if blocks(text, "answer") and len(searches) <= max_turns else 0.0
     return .30 * unique + .30 * novelty + .25 * multi + .15 * stop
 
 def score_trajectory(text, answers, supporting_facts=None, mode="multi", max_turns=4, weights=None):
@@ -53,7 +53,6 @@ def score_trajectory(text, answers, supporting_facts=None, mode="multi", max_tur
     weights = weights or {"answer": .55, "evidence": .15, "format": .10, "efficiency": .10, "strategy": .10}
     parts = {"answer": answer_score(text, answers), "evidence": evidence_score(text, answers, supporting_facts),
              "format": format_score(text), "efficiency": efficiency_score(text, max_turns),
-             "strategy": strategy_score(text, answers, supporting_facts)}
+             "strategy": strategy_score(text, answers, supporting_facts, max_turns)}
     parts["total"] = sum(weights[key] * parts[key] for key in weights)
     return parts
-

@@ -1,15 +1,37 @@
-sources: [nq, triviaqa, popqa, hotpotqa, 2wikimultihopqa, musique, bamboogle]
+# 向 Search-R1 看齐：只使用 nq 与 hotpotqa
+sources: [nq, hotpotqa]
 dataset_name: RUC-NLPIR/FlashRAG_datasets
-filter_target_rate: 0.05
-rewrite:
-  enabled: false
-  model_name: null
-  max_variants: 2
-  batch_size: 8
+
+# 评测 split：nq 用官方 test；hotpotqa 官方 test 无公开答案，改用官方 dev
+eval_split: test
+eval_splits:
+  nq: test
+  hotpotqa: dev
+allow_dev_fallback: false
+min_answer_rate: 0.9
+min_rows: 10
+
+# 质量过滤：问题长度 / 答案完整性 / 特殊字符 / 提问意图
+quality:
+  min_chars: 5
+  max_chars: 2000
+  max_answer_chars: 120
+  require_intent: true
+
+# 难度分层：问题长度 / 多跳词 / 时间限定词 / 否定词 / 专有名词
 difficulty:
   easy_max: 1
   medium_max: 3
-sampling:
-  max_total_multiplier: 2.5
-  source_balance: true
+  long_question_chars: 90
+  medium_question_chars: 40
 
+# 查询扩展：LLM 生成口语化与句式变体，仅补齐数量不足的分层
+augment:
+  enabled: true
+  model: deepseek-4.1-flash
+  api_base: null      # 留空则读 LLM_API_BASE
+  api_key: null       # 留空则读 LLM_API_KEY
+  styles: [colloquial, structure]
+  workers: 8
+  max_new_rows: 5000
+  balance_target: mean   # mean | median | max

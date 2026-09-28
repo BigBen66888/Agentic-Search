@@ -1,13 +1,21 @@
 mode: grpo
-reward_mode: multi
+runs:
+  grpo_binary: {reward_mode: binary}
+  grpo_multi:  {reward_mode: multi}
 weights: {answer: 0.55, evidence: 0.15, format: 0.10, efficiency: 0.10, strategy: 0.10}
 group:
-  success_weight: 1.5
-  failure_weight: 0.6
-  zscore_epsilon: 1.0e-6
-  clip_sigma: 5.0
-  fifo_mix_ratio: 0.10
+  success_weight: 1.5      # 轨迹加权：成功
+  failure_weight: 0.6      # 轨迹加权：失败
+  zscore_epsilon: 1.0e-6   # 组内 z-score
+  clip_sigma: 5.0          # 离群值裁剪
+fifo:
+  enabled: true
+  mix_ratio: 0.10          # 10% 成功轨迹混入训练
+  max_size: 20000
 training:
+  n_gpus_per_node: 4
+  nnodes: 1
   n_samples_per_prompt: 5
   max_turns: 4
-
+  use_kl_loss: true
+  state_masking: true

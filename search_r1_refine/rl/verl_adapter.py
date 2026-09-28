@@ -26,4 +26,3 @@ class SearchRewardAdapter:
 
     def __call__(self, solution_str: str, ground_truth: Dict[str, Any]) -> float:
         return float(self.score_text(solution_str, ground_truth)["total"])
-
